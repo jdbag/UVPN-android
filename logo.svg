@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 580" width="520" height="580">
+
+  <!-- Shield outer (dark navy) -->
+  <path d="M260 30 L460 108 L460 290 C460 400 260 490 260 490 C260 490 60 400 60 290 L60 108 Z"
+        fill="#1a2e4a"/>
+
+  <!-- Shield inner (white) -->
+  <path d="M260 75 L418 142 L418 288 C418 384 260 458 260 458 C260 458 102 384 102 288 L102 142 Z"
+        fill="white"/>
+
+  <!-- Speed dots left (blue circles) -->
+  <circle cx="148" cy="262" r="11" fill="#3b8dd4"/>
+  <circle cx="175" cy="262" r="11" fill="#3b8dd4"/>
+  <circle cx="202" cy="262" r="11" fill="#3b8dd4"/>
+
+  <!-- Speed lines (tapering right) -->
+  <rect x="212" y="248" width="88" height="15" rx="7.5" fill="#3b8dd4"/>
+  <rect x="212" y="268" width="70" height="13" rx="6.5" fill="#5aa8e8"/>
+  <rect x="212" y="285" width="50" height="11" rx="5.5" fill="#7dc0f0"/>
+
+  <!-- Lock body (dark navy) -->
+  <rect x="290" y="232" width="74" height="60" rx="10" fill="#1a2e4a"/>
+
+  <!-- Lock shackle arc -->
+  <path d="M306 232 L306 206 C306 182 358 182 358 206 L358 232"
+        fill="none" stroke="#1a2e4a" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Lock keyhole circle -->
+  <circle cx="327" cy="258" r="10" fill="white"/>
+  <!-- Lock keyhole stem -->
+  <rect x="322" y="258" width="10" height="16" rx="5" fill="white"/>
+
+  <!-- UVPN text -->
+  <text x="260" y="548"
+        text-anchor="middle"
+        font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="900"
+        font-size="80"
+        fill="#1a2e4a"
+        letter-spacing="6">UVPN</text>
+</svg>
