@@ -1,40 +1,31 @@
 {
-  "name": "U VPN – آمن وسريع",
+  "name": "U VPN – Fast & Secure",
   "short_name": "U VPN",
-  "description": "تطبيق VPN عالمي مجاني وآمن",
-  "start_url": "/Steptop-android/",
-  "scope": "/Steptop-android/",
+  "description": "Free global VPN – Fast, Secure & Private",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0d1b2a",
   "theme_color": "#2563eb",
-  "lang": "ar",
-  "dir": "rtl",
+  "lang": "en",
+  "dir": "ltr",
   "categories": ["utilities", "productivity"],
   "icons": [
     {
-      "src": "icons/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     },
     {
-      "src": "icons/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}      "purpose": "any maskable"
     },
     {
       "src": "icons/icon-152.png",
