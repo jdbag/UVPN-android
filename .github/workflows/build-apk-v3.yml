@@ -1,0 +1,97 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Install rsvg-convert
+        run: sudo apt-get install -y librsvg2-bin
+
+      - name: Prepare www folder
+        run: |
+          mkdir -p www
+          cp index.html style.css app.js logo.svg manifest.json sw.js www/ 2>/dev/null || true
+          [ -d icons ] && cp -r icons www/ || true
+
+      - name: Install Capacitor
+        run: npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Init & Add Android
+        run: |
+          npx cap init "U VPN" "com.uvpn.app" --web-dir www
+          npx cap add android
+
+      - name: Copy assets
+        run: npx cap copy android
+
+      - name: Generate launcher icons from logo.svg
+        run: |
+          declare -A ICON_MAP=(
+            ["mipmap-ldpi"]=36
+            ["mipmap-mdpi"]=48
+            ["mipmap-hdpi"]=72
+            ["mipmap-xhdpi"]=96
+            ["mipmap-xxhdpi"]=144
+            ["mipmap-xxxhdpi"]=192
+          )
+          for DIR in "${!ICON_MAP[@]}"; do
+            SIZE="${ICON_MAP[$DIR]}"
+            DEST="android/app/src/main/res/$DIR"
+            mkdir -p "$DEST"
+            rsvg-convert -w "$SIZE" -h "$SIZE" logo.svg -o "$DEST/ic_launcher.png"
+            cp "$DEST/ic_launcher.png" "$DEST/ic_launcher_round.png"
+            echo "✅ $DIR: ${SIZE}x${SIZE}"
+          done
+
+      - name: Generate foreground icons (adaptive)
+        run: |
+          declare -A ICON_MAP=(
+            ["mipmap-ldpi"]=27
+            ["mipmap-mdpi"]=36
+            ["mipmap-hdpi"]=54
+            ["mipmap-xhdpi"]=72
+            ["mipmap-xxhdpi"]=108
+            ["mipmap-xxxhdpi"]=144
+          )
+          for DIR in "${!ICON_MAP[@]}"; do
+            SIZE="${ICON_MAP[$DIR]}"
+            DEST="android/app/src/main/res/$DIR"
+            mkdir -p "$DEST"
+            rsvg-convert -w "$SIZE" -h "$SIZE" logo.svg -o "$DEST/ic_launcher_foreground.png"
+          done
+
+      - name: Fix gradlew
+        run: chmod +x android/gradlew
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: UVPN-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
