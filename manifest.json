@@ -1,16 +1,15 @@
 {
-  "name": "U VPN – Fast & Secure",
+  "name": "U VPN \u2013 Fast & Secure",
   "short_name": "U VPN",
-  "description": "Free global VPN – Fast, Secure & Private",
+  "description": "Free global VPN \u2013 Fast, Secure & Private",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0d1b2a",
-  "theme_color": "#2563eb",
+  "background_color": "#0b1623",
+  "theme_color": "#1a2e4a",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["utilities", "productivity"],
   "icons": [
     {
       "src": "logo.svg",
@@ -23,42 +22,6 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"
-    }
-  ]
-}      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "icons/screenshot1.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "الشاشة الرئيسية"
     }
   ]
 }
