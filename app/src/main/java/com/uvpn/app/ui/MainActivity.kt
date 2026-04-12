@@ -11,9 +11,14 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.uvpn.app.R
 import com.uvpn.app.databinding.ActivityMainBinding
 import com.uvpn.app.vpn.WarpVpnService
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -30,17 +35,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── Session expiry timer job ──────────────────────────────
-    private var sessionTimerJob: kotlinx.coroutines.Job? = null
+    private var sessionTimerJob: Job? = null
 
     override fun onCreate(s: Bundle?) {
         super.onCreate(s)
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
-
-        // Init AdMob
         AdManager.init(this)
-
         observe()
         clicks()
         refreshSessionUI()
@@ -63,13 +64,12 @@ class MainActivity : AppCompatActivity() {
         sessionTimerJob?.cancel()
     }
 
-    // ── Update session label every minute ─────────────────────
     private fun startSessionTimer() {
         sessionTimerJob?.cancel()
-        sessionTimerJob = kotlinx.coroutines.MainScope().launch {
-            while (true) {
+        sessionTimerJob = lifecycleScope.launch {
+            while (isActive) {
                 refreshSessionUI()
-                kotlinx.coroutines.delay(60_000)
+                delay(60_000)
             }
         }
     }
@@ -84,38 +84,37 @@ class MainActivity : AppCompatActivity() {
     private fun updateAdButtons(remaining: Long, adsWatched: Int) {
         when {
             remaining <= 0 -> {
-                // No session — show "Watch 1 Ad (2h)"
                 b.btnAd1.visibility = View.VISIBLE
                 b.btnAd2.visibility = View.GONE
                 b.btnAd1.text = "▶  Watch Ad — Get 2 Hours Free"
                 b.btnAd1.setBackgroundColor(Color.parseColor("#2563EB"))
+                b.btnAd1.isEnabled = true
             }
             adsWatched == 1 -> {
-                // Has 2h session — offer second ad for 12h
                 b.btnAd1.visibility = View.GONE
                 b.btnAd2.visibility = View.VISIBLE
                 b.btnAd2.text = "▶  Watch 2nd Ad — Upgrade to 12 Hours"
                 b.btnAd2.setBackgroundColor(Color.parseColor("#7C3AED"))
+                b.btnAd2.isEnabled = true
             }
             else -> {
-                // adsWatched == 2, has 12h session
                 b.btnAd1.visibility = View.GONE
                 b.btnAd2.visibility = View.GONE
             }
         }
     }
 
-    // ── Observers ─────────────────────────────────────────────
     private fun observe() {
-        vm.state.observe(this) { updateUi(it) }
+        vm.state.observe(this)        { updateUi(it) }
         vm.sessionLabel.observe(this) { b.tvSession.text = it }
-        vm.adsWatched.observe(this) {
-            // Update star indicators
+        vm.adsWatched.observe(this)   { watched ->
             b.ivStar1.setColorFilter(
-                if (it >= 1) Color.parseColor("#F59E0B") else Color.parseColor("#2A3A4A")
+                if (watched >= 1) Color.parseColor("#F59E0B")
+                else Color.parseColor("#2A3A4A")
             )
             b.ivStar2.setColorFilter(
-                if (it >= 2) Color.parseColor("#F59E0B") else Color.parseColor("#2A3A4A")
+                if (watched >= 2) Color.parseColor("#F59E0B")
+                else Color.parseColor("#2A3A4A")
             )
         }
         vm.ipInfo.observe(this) {
@@ -128,59 +127,46 @@ class MainActivity : AppCompatActivity() {
         vm.up.observe(this)   { b.tvUp.text = it }
         vm.ping.observe(this) { b.tvPing.text = it }
         vm.accountIdx.observe(this) { idx ->
-            val acc = vm.accounts[idx]
+            val acc = vm.accounts.getOrNull(idx) ?: return@observe
             b.tvSelServer.text = "${acc.flag}  ${acc.region}"
             b.tvSelDetail.text = "Cloudflare WARP • ${acc.region}"
         }
     }
 
-    // ── Clicks ────────────────────────────────────────────────
     private fun clicks() {
-        // Main connect button
         b.btnConnect.setOnClickListener {
             when (vm.state.value) {
                 VpnState.CONNECTED, VpnState.CONNECTING -> doStop()
                 else -> handleConnectTap()
             }
         }
-
-        // Ad 1 — Watch for 2 hours
         b.btnAd1.setOnClickListener { showFirstAd() }
-
-        // Ad 2 — Watch for 12 hours
         b.btnAd2.setOnClickListener { showSecondAd() }
-
         b.cardServer.setOnClickListener { showRegionPicker() }
         b.btnRefreshIp.setOnClickListener { vm.refreshIp() }
     }
 
-    // ── Handle connect tap (check session first) ──────────────
     private fun handleConnectTap() {
-        when {
-            AdManager.hasActiveSession(this) -> requestPerm()
-            else -> {
-                // No session — must watch ad first
-                AlertDialog.Builder(this)
-                    .setTitle("Free VPN Access")
-                    .setMessage("Watch a short ad to get 2 hours of free VPN.\nWatch 2 ads to get 12 hours!")
-                    .setPositiveButton("Watch Ad (2h)") { _, _ -> showFirstAd() }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
+        if (AdManager.hasActiveSession(this)) {
+            requestPerm()
+        } else {
+            AlertDialog.Builder(this)
+                .setTitle("Free VPN Access")
+                .setMessage("Watch a short ad to get 2 hours of free VPN.\nWatch 2 ads to get 12 hours!")
+                .setPositiveButton("Watch Ad (2h)") { _, _ -> showFirstAd() }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
     }
 
-    // ── Show First Rewarded Ad → 2 hours ─────────────────────
     private fun showFirstAd() {
         b.btnAd1.isEnabled = false
         b.btnAd1.text = "Loading ad..."
-
         AdManager.showFirstAd(
             activity = this,
             onGranted = { hours ->
-                toast("✅ ${hours} hours unlocked!")
+                toast("✅ $hours hours unlocked!")
                 refreshSessionUI()
-                // Auto-connect after reward
                 b.root.postDelayed({ requestPerm() }, 500)
             },
             onFailed = {
@@ -191,15 +177,13 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ── Show Second Rewarded Ad → 12 hours ───────────────────
     private fun showSecondAd() {
         b.btnAd2.isEnabled = false
         b.btnAd2.text = "Loading ad..."
-
         AdManager.showSecondAd(
             activity = this,
             onGranted = { hours ->
-                toast("🎉 ${hours} hours unlocked!")
+                toast("🎉 $hours hours unlocked!")
                 refreshSessionUI()
             },
             onFailed = {
@@ -210,7 +194,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ── VPN start/stop ────────────────────────────────────────
     private fun requestPerm() {
         val intent = VpnService.prepare(this)
         if (intent != null) permLauncher.launch(intent) else doStart()
@@ -248,7 +231,6 @@ class MainActivity : AppCompatActivity() {
             }.show()
     }
 
-    // ── UI state ─────────────────────────────────────────────
     private fun updateUi(state: VpnState) {
         when (state) {
             VpnState.IDLE -> {
