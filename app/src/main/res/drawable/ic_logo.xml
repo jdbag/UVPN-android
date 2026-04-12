@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Shield outer (dark navy) -->
+    <path
+        android:fillColor="#1a2e4a"
+        android:pathData="M54,8 L90,22 L90,56 C90,78 54,96 54,96 C54,96 18,78 18,56 L18,22 Z"/>
+
+    <!-- Shield inner (white) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,18 L82,30 L82,55 C82,74 54,89 54,89 C54,89 26,74 26,55 L26,30 Z"/>
+
+    <!-- Speed dot 1 -->
+    <path android:fillColor="#3b8dd4"
+        android:pathData="M36,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+    <!-- Speed dot 2 -->
+    <path android:fillColor="#3b8dd4"
+        android:pathData="M46,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+    <!-- Speed dot 3 -->
+    <path android:fillColor="#3b8dd4"
+        android:pathData="M56,54 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+
+    <!-- Speed line 1 (longest) -->
+    <path
+        android:fillColor="#3b8dd4"
+        android:pathData="M58,49 L76,49 Q79,49 79,52 L79,52 Q79,55 76,55 L58,55 Q55,55 55,52 L55,52 Q55,49 58,49 Z"/>
+
+    <!-- Speed line 2 (medium) -->
+    <path
+        android:fillColor="#5aa8e8"
+        android:pathData="M58,57 L72,57 Q75,57 75,60 L75,60 Q75,63 72,63 L58,63 Q55,63 55,60 L55,60 Q55,57 58,57 Z"/>
+
+    <!-- Speed line 3 (short) -->
+    <path
+        android:fillColor="#7dc0f0"
+        android:pathData="M58,65 L68,65 Q71,65 71,68 L71,68 Q71,71 68,71 L58,71 Q55,71 55,68 L55,68 Q55,65 58,65 Z"/>
+
+    <!-- Lock body -->
+    <path
+        android:fillColor="#1a2e4a"
+        android:pathData="M72,47 L88,47 Q92,47 92,51 L92,51 L92,65 Q92,69 88,69 L72,69 Q68,69 68,65 L68,65 L68,51 Q68,47 72,47 Z"/>
+
+    <!-- Lock shackle -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1a2e4a"
+        android:strokeWidth="5"
+        android:strokeLineCap="round"
+        android:pathData="M73,47 L73,38 Q73,30 80,30 Q87,30 87,38 L87,47"/>
+
+    <!-- Lock keyhole -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M80,55 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M78,57 L82,57 L82,64 Q82,67 80,67 Q78,67 78,64 Z"/>
+
+</vector>
