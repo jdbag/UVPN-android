@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">U VPN</string>
-    <string name="vpn_desc">U VPN – Cloudflare WARP Powered</string>
-    <string name="ad_watch_1">Watch Ad — Get 2 Hours Free</string>
-    <string name="ad_watch_2">Watch 2nd Ad — Upgrade to 12 Hours</string>
-    <string name="session_expired">Watch an ad to connect</string>
-</resources>
