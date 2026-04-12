@@ -14,29 +14,26 @@ import java.io.FileOutputStream
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 
 class WarpVpnService : VpnService() {
 
     companion object {
         const val ACTION_CONNECT    = "com.uvpn.app.CONNECT"
         const val ACTION_DISCONNECT = "com.uvpn.app.DISCONNECT"
-        const val EXTRA_ACCOUNT_IDX = "account_idx"  // 0,1,2 → WarpConfig.accounts[idx]
+        const val EXTRA_ACCOUNT_IDX = "account_idx"
         const val NOTIF_ID  = 101
         const val CH_ID     = "uvpn_warp"
         const val BROADCAST = "com.uvpn.app.STATE"
         const val EXTRA_STATE = "state"
-
         const val ST_CONNECTING   = "CONNECTING"
         const val ST_CONNECTED    = "CONNECTED"
         const val ST_DISCONNECTED = "DISCONNECTED"
         const val ST_ERROR        = "ERROR"
         const val ST_NO_PERM      = "NO_PERMISSION"
-
-        private const val TAG = "WarpVPN"
+        private const val TAG       = "WarpVPN"
         private const val WARP_HOST = "162.159.192.1"
         private const val WARP_PORT = 2408
-        private const val MTU = 1280
+        private const val MTU       = 1280
     }
 
     private var tunFd: ParcelFileDescriptor? = null
@@ -51,16 +48,13 @@ class WarpVpnService : VpnService() {
                 START_STICKY
             }
             ACTION_DISCONNECT -> {
-                scope.launch { disconnect() }
+                disconnect()
                 START_NOT_STICKY
             }
             else -> START_NOT_STICKY
         }
     }
 
-    // ────────────────────────────────────────────────────────
-    // CONNECT
-    // ────────────────────────────────────────────────────────
     private suspend fun connect(accountIdx: Int) {
         broadcast(ST_CONNECTING)
         createChannel()
@@ -69,141 +63,114 @@ class WarpVpnService : VpnService() {
         val account = WarpConfig.accounts.getOrElse(accountIdx) { WarpConfig.accounts[0] }
 
         try {
-            // ── 1. Build TUN interface ──────────────────────
+            // Build VPN tunnel interface
             val builder = Builder()
                 .setSession("U VPN")
-                .addAddress(account.clientIPv4.substringBefore("/"),
-                            account.clientIPv4.substringAfter("/").toInt())
-                .addAddress(account.clientIPv6.substringBefore("/"),
-                            account.clientIPv6.substringAfter("/").toInt())
-                .addRoute("0.0.0.0", 0)          // ALL IPv4 traffic through VPN
-                .addRoute("::", 0)                // ALL IPv6 traffic through VPN
+                .addAddress(
+                    account.clientIPv4.substringBefore("/"),
+                    account.clientIPv4.substringAfter("/").toIntOrNull() ?: 32
+                )
+                .addRoute("0.0.0.0", 0)
+                .addRoute("::", 0)
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("1.0.0.1")
-                .addDnsServer("2606:4700:4700::1111")
                 .setMtu(MTU)
-                .setBlocking(true)
+                .setBlocking(false)
 
-            // Allow our app to bypass VPN for IP lookups
-            allowBypass()
+            // allowBypass() is a method of VpnService — call it on this service instance
+            this.allowBypass()
 
             tunFd = builder.establish()
 
             if (tunFd == null) {
-                Log.e(TAG, "VPN permission not granted")
                 broadcast(ST_NO_PERM)
                 stopSelf()
                 return
             }
 
-            // ── 2. Create UDP socket to Cloudflare WARP ────
-            udpSocket = DatagramSocket().also {
-                protect(it)  // CRITICAL: exempt from VPN routing to avoid loop
-                it.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
-                it.soTimeout = 5000
-            }
+            // Create UDP socket protected from VPN loop
+            val socket = DatagramSocket()
+            this.protect(socket)  // protect() is also a VpnService method
+            socket.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
+            socket.soTimeout = 5000
+            udpSocket = socket
 
-            startForeground(NOTIF_ID, buildNotif("Connected • Cloudflare WARP • ${account.flag} ${account.region}"))
+            startForeground(NOTIF_ID, buildNotif("Connected • ${account.flag} ${account.region}"))
             broadcast(ST_CONNECTED)
-            Log.i(TAG, "VPN tunnel established via ${account.region}")
+            Log.i(TAG, "VPN connected — ${account.region}")
 
-            // ── 3. Packet forwarding loop ───────────────────
-            // TUN fd → UDP socket (outbound packets to Cloudflare)
-            // UDP socket → TUN fd (inbound packets from Cloudflare)
-            val inbound  = scope.launch { runInbound() }
-            val outbound = scope.launch { runOutbound() }
-
-            // Wait for disconnect
-            joinAll(inbound, outbound)
+            val inJob  = scope.launch { runInbound() }
+            val outJob = scope.launch { runOutbound() }
+            joinAll(inJob, outJob)
 
         } catch (e: SecurityException) {
-            Log.e(TAG, "SecurityException: ${e.message}")
+            Log.e(TAG, "Security: ${e.message}")
             broadcast(ST_NO_PERM)
             stopSelf()
         } catch (e: Exception) {
-            Log.e(TAG, "Connection error: ${e.message}")
+            Log.e(TAG, "Error: ${e.message}")
             broadcast(ST_ERROR)
             stopSelf()
         }
     }
 
-    // ── Outbound: TUN → UDP (device → Cloudflare WARP) ─────
     private suspend fun runOutbound() = withContext(Dispatchers.IO) {
         val tun = tunFd ?: return@withContext
         val udp = udpSocket ?: return@withContext
         val buf = ByteArray(MTU)
         val stream = FileInputStream(tun.fileDescriptor)
-
         try {
             while (isActive && tunFd != null) {
                 val len = stream.read(buf)
-                if (len > 0) {
-                    val pkt = DatagramPacket(buf, len)
-                    udp.send(pkt)
-                }
+                if (len > 0) udp.send(DatagramPacket(buf, len))
             }
         } catch (e: Exception) {
-            if (isActive) Log.d(TAG, "Outbound ended: ${e.message}")
+            if (isActive) Log.d(TAG, "Outbound: ${e.message}")
         }
     }
 
-    // ── Inbound: UDP → TUN (Cloudflare WARP → device) ──────
     private suspend fun runInbound() = withContext(Dispatchers.IO) {
         val tun = tunFd ?: return@withContext
         val udp = udpSocket ?: return@withContext
         val buf = ByteArray(MTU)
         val stream = FileOutputStream(tun.fileDescriptor)
-
         try {
             while (isActive && tunFd != null) {
                 val pkt = DatagramPacket(buf, buf.size)
                 udp.receive(pkt)
-                if (pkt.length > 0) {
-                    stream.write(buf, 0, pkt.length)
-                }
+                if (pkt.length > 0) stream.write(buf, 0, pkt.length)
             }
         } catch (e: Exception) {
-            if (isActive) Log.d(TAG, "Inbound ended: ${e.message}")
+            if (isActive) Log.d(TAG, "Inbound: ${e.message}")
         }
     }
 
-    // ────────────────────────────────────────────────────────
-    // DISCONNECT
-    // ────────────────────────────────────────────────────────
     private fun disconnect() {
         scope.coroutineContext.cancelChildren()
         runCatching { udpSocket?.close() }
         runCatching { tunFd?.close() }
-        udpSocket = null
-        tunFd = null
+        udpSocket = null; tunFd = null
         broadcast(ST_DISCONNECTED)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    // ────────────────────────────────────────────────────────
-    // HELPERS
-    // ────────────────────────────────────────────────────────
     private fun broadcast(state: String) {
         sendBroadcast(Intent(BROADCAST).putExtra(EXTRA_STATE, state))
     }
 
     private fun createChannel() {
-        val ch = NotificationChannel(CH_ID, "VPN Status", NotificationManager.IMPORTANCE_LOW)
-            .apply { setShowBadge(false) }
+        val ch = NotificationChannel(CH_ID, "VPN Status",
+            NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) }
         getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
     private fun buildNotif(text: String): Notification {
-        val tap = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        val stop = PendingIntent.getService(
-            this, 1,
+        val tap = PendingIntent.getActivity(this, 0,
+            Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val stop = PendingIntent.getService(this, 1,
             Intent(this, WarpVpnService::class.java).apply { action = ACTION_DISCONNECT },
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CH_ID)
             .setContentTitle("U VPN")
             .setContentText(text)
