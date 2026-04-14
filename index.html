@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="U VPN"/>
+  <meta name="theme-color" content="#1a2e4a"/>
+  <title>U VPN – Fast & Secure</title>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="icon" href="logo.svg"/>
+  <link rel="apple-touch-icon" href="logo.svg"/>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-app-pub-3640039090708511~2345908024" crossorigin="anonymous"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b1623;color:#e2eaf4}
+    :root{--navy:#0b1623;--navy2:#1a2e4a;--blue:#2563eb;--blue-l:#3b82f6;--accent:#38bdf8;--green:#22c55e;--red:#ef4444;--gold:#f59e0b;--s2:#162236;--s3:#1e2f45;--bd:rgba(59,130,246,0.15);--t:#e2eaf4;--t2:#8ba4c0;--r:16px;--rs:12px}
+
+    /* SPLASH */
+    #splash{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at center,#1a2e4a,#0b1623 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+    #splash img{width:100px;height:100px;animation:pulse 2s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(56,189,248,0.4))}
+    #splash h1{font-size:2.6rem;font-weight:900;letter-spacing:7px;background:linear-gradient(135deg,#fff,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    #splash p{color:var(--t2);font-size:.84rem;letter-spacing:3px}
+    .lbar{width:190px;height:3px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden}
+    .lfill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--accent));border-radius:99px;animation:load 2.2s ease forwards}
+    @keyframes load{to{width:100%}}
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+
+    /* APP */
+    #app{width:100%;max-width:430px;height:100vh;background:var(--navy);display:flex;flex-direction:column;margin:0 auto;position:relative;overflow:hidden}
+    .hidden{display:none!important}
+
+    /* HEADER */
+    .hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 18px 10px;background:linear-gradient(180deg,rgba(26,46,74,.96),rgba(11,22,35,.96));border-bottom:1px solid var(--bd);flex-shrink:0}
+    .hdr-logo{display:flex;align-items:center;gap:9px;font-size:1.2rem;font-weight:900;letter-spacing:4px;background:linear-gradient(135deg,#fff,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .hdr-logo img{width:32px;height:32px;border-radius:8px}
+    .hdr-acts{display:flex;gap:6px}
+    .ibtn{width:36px;height:36px;background:rgba(26,46,74,.8);border:1px solid var(--bd);border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2);-webkit-tap-highlight-color:transparent}
+    .ibtn:active{background:var(--s3);color:var(--t)}
+
+    /* SCREENS */
+    .screen{display:none;flex:1;overflow-y:auto;padding-bottom:70px}
+    .screen.act{display:block}
+    .screen::-webkit-scrollbar{width:3px}
+    .screen::-webkit-scrollbar-thumb{background:var(--bd);border-radius:99px}
+    .shdr{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;position:sticky;top:0;background:var(--navy);border-bottom:1px solid var(--bd);z-index:5}
+    .shdr h2{font-size:1rem;font-weight:700}
+    .bbtn{width:32px;height:32px;background:var(--s2);border:1px solid var(--bd);border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--t2)}
+
+    /* AD BAR */
+    .adbar{width:100%;min-height:52px;background:rgba(15,30,46,.8);border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;flex-shrink:0}
+    .adbar ins{display:block;width:320px;height:50px}
+    .adlbl{position:absolute;top:2px;right:6px;font-size:.48rem;color:rgba(139,164,192,.4);text-transform:uppercase}
+
+    /* FREE BADGE */
+    .free-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:99px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--green);font-size:.8rem;font-weight:700;margin-bottom:2px}
+
+    /* CONNECTION */
+    .conn{display:flex;flex-direction:column;align-items:center;padding:20px 18px 10px;gap:12px}
+    .globe{position:relative;width:168px;height:168px;display:flex;align-items:center;justify-content:center}
+    .ring{position:absolute;border-radius:50%;border:1px solid rgba(59,130,246,.18);animation:spin 12s linear infinite}
+    .r1{width:136px;height:136px}.r2{width:160px;height:160px;animation-duration:18s;animation-direction:reverse}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .pwrbtn{width:108px;height:108px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#1e3a5f,#0f1e2e);border:2px solid var(--bd);cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;transition:all .35s;box-shadow:0 0 30px rgba(37,99,235,.1);-webkit-tap-highlight-color:transparent}
+    .pwrbtn:active{transform:scale(.95)}
+    .pwrbtn.connecting{animation:glp 1.2s ease-in-out infinite}
+    .pwrbtn.connected{background:radial-gradient(circle at 40% 35%,#1a4d2a,#0f3b1e);border-color:var(--green);box-shadow:0 0 40px rgba(34,197,94,.35)}
+    .pwrbtn.connected svg{color:var(--green)!important}
+    @keyframes glp{0%,100%{box-shadow:0 0 28px rgba(37,99,235,.2)}50%{box-shadow:0 0 58px rgba(37,99,235,.6)}}
+    .pwrbtn svg{color:#4a7ab5;transition:color .3s}
+    .strow{display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700}
+    .stdot{width:8px;height:8px;border-radius:50%;background:var(--t2);transition:all .3s}
+    .stdot.connected{background:var(--green);box-shadow:0 0 10px var(--green)}
+    .stdot.connecting{background:var(--blue);animation:blink .8s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+    .stsub{color:var(--t2);font-size:.78rem;text-align:center}
+
+    /* IP CARD */
+    .ipc{width:100%;background:linear-gradient(135deg,rgba(22,34,54,.9),rgba(15,30,46,.9));border:1px solid var(--bd);border-radius:var(--r);display:flex;align-items:stretch;padding:0;overflow:hidden;opacity:.5;transition:opacity .4s}
+    .ipc.on{opacity:1}
+    .ipit{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 6px}
+    .iplbl{font-size:.58rem;color:var(--t2);text-transform:uppercase;letter-spacing:1px}
+    .ipval{font-size:.74rem;font-weight:700;word-break:break-all;text-align:center}
+    .ipdiv{width:1px;background:var(--bd);align-self:stretch}
+
+    /* SPEED */
+    .sprow{display:flex;gap:8px;padding:0 18px 10px;opacity:0;transition:opacity .5s}
+    .sprow.on{opacity:1}
+    .spcard{flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px;display:flex;align-items:center;gap:7px;color:var(--blue-l)}
+    .spval{font-size:.94rem;font-weight:700;color:var(--t)}
+    .spunit{font-size:.58rem;color:var(--t2)}
+
+    /* SERVER SECTION */
+    .srvsec{padding:0 18px 10px}
+    .sechdr{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--t2);margin-bottom:8px}
+    .tbtn{background:none;border:none;color:var(--blue-l);cursor:pointer;font-size:.78rem}
+    .srvsel{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s}
+    .srvsel:active{border-color:var(--blue)}
+    .sflag{font-size:1.6rem;line-height:1}
+    .sinfo{flex:1}
+    .sname{font-weight:700;font-size:.9rem}
+    .sping{font-size:.7rem;color:var(--t2);margin-top:2px}
+    .bars{display:flex;align-items:flex-end;gap:3px}
+    .bar{width:4px;border-radius:2px;background:var(--bd)}
+    .b1{height:5px}.b2{height:9px}.b3{height:13px}.b4{height:17px}
+    .bar.on{background:var(--green)}
+
+    /* FEATURES */
+    .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 18px 14px}
+    .fcard{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:all .2s}
+    .fcard:active{border-color:var(--blue)}
+    .fico{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+    .fi-r{background:rgba(239,68,68,.12);color:var(--red)}
+    .fi-b{background:rgba(59,130,246,.12);color:var(--blue-l)}
+    .fname{font-weight:700;font-size:.84rem}
+    .fst{font-size:.68rem;color:var(--t2);margin-top:2px}
+    .fst.on{color:var(--green)}
+
+    /* TOGGLE */
+    .tgl{width:40px;height:22px;background:var(--s3);border:1px solid var(--bd);border-radius:99px;cursor:pointer;position:relative;transition:all .28s;flex-shrink:0}
+    .tgl.on{background:var(--blue);border-color:var(--blue)}
+    .tgl-t{position:absolute;top:2px;left:2px;width:16px;height:16px;background:#5a7a9a;border-radius:50%;transition:all .28s}
+    .tgl.on .tgl-t{left:calc(100% - 18px);background:#fff}
+    .tgl.sm{width:36px;height:20px}
+    .tgl.sm .tgl-t{width:14px;height:14px}
+    .tgl.sm.on .tgl-t{left:calc(100% - 16px)}
+
+    /* NATIVE AD */
+    .adnat{margin:0 18px 10px;background:rgba(15,30,46,.6);border:1px solid var(--bd);border-radius:12px;overflow:hidden;position:relative;min-height:70px}
+    .adnat .adlbl{top:4px;right:8px}
+    .adnat ins{display:block}
+
+    /* SERVER LIST */
+    .sbox{margin:12px 18px 8px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:10px 12px;display:flex;align-items:center;gap:8px;color:var(--t2)}
+    .sbox input{flex:1;background:none;border:none;outline:none;color:var(--t);font-size:.84rem}
+    .sbox input::placeholder{color:var(--t2)}
+    .stabs{display:flex;gap:6px;padding:0 18px 12px}
+    .tab{padding:5px 14px;border-radius:99px;background:var(--s2);border:1px solid var(--bd);color:var(--t2);cursor:pointer;font-size:.78rem;transition:all .2s}
+    .tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+    .slist{padding:0 18px;display:flex;flex-direction:column;gap:6px}
+    .si{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s}
+    .si:active{border-color:var(--blue)}
+    .si.chosen{border-color:var(--blue-l);background:rgba(37,99,235,.06)}
+    .si-f{font-size:1.45rem;width:32px;text-align:center}
+    .si-i{flex:1}
+    .si-n{font-weight:700;font-size:.86rem}
+    .si-d{font-size:.68rem;color:var(--t2);margin-top:2px}
+    .si-p{font-size:.74rem;font-weight:600}
+    .si-p.good{color:var(--green)}.si-p.ok{color:var(--gold)}.si-p.slow{color:var(--red)}
+    .bfree{font-size:.58rem;background:rgba(34,197,94,.1);color:var(--green);padding:2px 6px;border-radius:99px;border:1px solid rgba(34,197,94,.22);font-weight:700}
+    .bvip{font-size:.58rem;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;padding:2px 6px;border-radius:99px;font-weight:700}
+
+    /* SETTINGS */
+    .sbody{padding:12px 18px;display:flex;flex-direction:column;gap:16px}
+    .sg{display:flex;flex-direction:column;gap:3px}
+    .slbl{font-size:.66rem;color:var(--t2);text-transform:uppercase;letter-spacing:1.5px;padding:0 4px 6px}
+    .sit{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:all .2s;margin-top:3px}
+    .sit:active{background:var(--s3)}
+    .ssel{background:var(--s3);border:1px solid var(--bd);border-radius:8px;color:var(--t);padding:4px 8px;font-size:.78rem;outline:none}
+    .sval{color:var(--t2);font-size:.78rem}
+
+    /* PREMIUM */
+    .phero{display:flex;flex-direction:column;align-items:center;padding:22px 18px 16px;gap:10px;text-align:center;background:linear-gradient(160deg,rgba(37,99,235,.06),transparent)}
+    .phero h2{font-size:1.2rem;font-weight:800}
+    .phero p{color:var(--t2);font-size:.83rem}
+    .pfeats{padding:0 18px 14px;display:flex;flex-direction:column;gap:8px}
+    .pfitem{background:var(--s2);border:1px solid var(--bd);border-radius:var(--rs);padding:12px 14px;display:flex;align-items:center;gap:12px}
+    .pfic{font-size:1.3rem;width:32px;text-align:center}
+    .plans{display:flex;gap:8px;padding:0 18px 12px}
+    .plan{flex:1;background:var(--s2);border:2px solid var(--bd);border-radius:var(--r);padding:14px;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+    .plan.chosen{border-color:var(--blue);background:rgba(37,99,235,.08)}
+    .plbadge{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:99px}
+    .plper{font-size:.75rem;color:var(--t2);margin-bottom:6px}
+    .plprice{font-size:1.2rem;font-weight:800}
+    .plprice span{font-size:.68rem;color:var(--t2);font-weight:400}
+    .pltotal{font-size:.64rem;color:var(--t2);margin-top:3px}
+    .ctabtn{display:block;width:calc(100% - 36px);margin:0 18px 8px;background:linear-gradient(135deg,var(--blue),var(--blue-l));color:#fff;border:none;border-radius:var(--r);padding:14px;font-size:.93rem;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(37,99,235,.35);-webkit-tap-highlight-color:transparent}
+    .ctabtn:active{transform:scale(.98)}
+    .ctanote{text-align:center;color:var(--t2);font-size:.7rem;padding-bottom:8px}
+
+    /* REWARDED */
+    #rwOv{position:fixed;inset:0;z-index:8000;background:rgba(5,12,22,.97);display:flex;align-items:center;justify-content:center}
+    #rwOv.hidden{display:none}
+    .rwbox{width:320px;max-width:92vw;background:#0f1e2e;border:1px solid var(--bd);border-radius:20px;padding:24px;text-align:center}
+    .rwbox h3{font-size:1rem;font-weight:700;margin:8px 0 6px}
+    .rwbox p{font-size:.78rem;color:var(--t2);margin-bottom:16px}
+    .rwbtn{width:100%;background:linear-gradient(135deg,var(--blue),var(--blue-l));color:#fff;border:none;border-radius:12px;padding:12px;font-size:.9rem;font-weight:700;cursor:pointer;margin-bottom:8px}
+    .rwskip{background:none;border:none;color:var(--t2);font-size:.74rem;cursor:pointer}
+
+    /* INSTALL */
+    #ib{position:fixed;top:0;left:0;right:0;z-index:7000;background:linear-gradient(135deg,#1a2e4a,#162236);border-bottom:1px solid rgba(59,130,246,.3);padding:9px 13px;display:flex;align-items:center;justify-content:space-between;gap:9px}
+    .ib-c{display:flex;align-items:center;gap:9px;flex:1}
+    .ib-t strong{font-size:.84rem;display:block}
+    .ib-t span{font-size:.68rem;color:var(--t2)}
+    .ib-ibtn{background:var(--blue);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:.78rem;font-weight:700;cursor:pointer}
+    .ib-x{background:none;border:none;color:var(--t2);font-size:1.2rem;cursor:pointer}
+
+    /* BOTTOM NAV */
+    .bnav{display:flex;border-top:1px solid var(--bd);background:linear-gradient(0deg,rgba(11,22,35,.98),rgba(15,30,46,.98));padding:6px 0 max(6px,env(safe-area-inset-bottom));position:absolute;bottom:0;left:0;right:0;z-index:10;flex-shrink:0}
+    .nbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--t2);cursor:pointer;font-size:.6rem;padding:5px 0;transition:color .2s;-webkit-tap-highlight-color:transparent}
+    .nbtn.on{color:var(--accent)}
+    .nbtn svg{width:20px;height:20px}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(26,46,74,.96);border:1px solid var(--bd);border-radius:10px;padding:8px 16px;font-size:.78rem;white-space:nowrap;opacity:0;pointer-events:none;transition:all .28s;z-index:9999}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  </style>
+</head>
+<body>
+
+<!-- REWARDED AD -->
+<div id="rwOv" class="hidden">
+  <div class="rwbox">
+    <div style="font-size:2rem">🎬</div>
+    <h3>Unlock VIP Server</h3>
+    <p>Watch a short ad to unlock this VIP server for 24 hours</p>
+    <button class="rwbtn" id="rwBtn" onclick="watchRewarded()">▶ Watch Ad Now</button>
+    <button class="rwskip" onclick="closeRewarded()">Maybe later</button>
+  </div>
+</div>
+
+<!-- INSTALL BANNER -->
+<div id="ib" class="hidden">
+  <div class="ib-c">
+    <img src="logo.svg" width="34" height="34" style="border-radius:8px" alt="U VPN"/>
+    <div class="ib-t"><strong>U VPN</strong><span>Install app on your device</span></div>
+  </div>
+  <button class="ib-ibtn" id="installBtn">Install</button>
+  <button class="ib-x" id="dismissIb">×</button>
+</div>
+
+<!-- SPLASH — uses logo.svg (the exact uploaded image) -->
+<div id="splash">
+  <img src="logo.svg" alt="U VPN"/>
+  <h1>U VPN</h1>
+  <p>SECURE · FAST · PRIVATE</p>
+  <div class="lbar"><div class="lfill"></div></div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <header class="hdr">
+    <div class="hdr-logo">
+      <img src="logo.svg" alt="U VPN"/>
+      U VPN
+    </div>
+    <div class="hdr-acts">
+      <button class="ibtn" id="installAppBtn" style="display:none" onclick="triggerInstall()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="ibtn" onclick="nav('premium')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="ibtn" onclick="nav('settings')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <div id="screen-home" class="screen act">
+    <!-- Banner Ad -->
+    <div class="adbar">
+      <span class="adlbl">Ad</span>
+      <ins class="adsbygoogle" style="display:inline-block;width:320px;height:50px"
+           data-ad-client="ca-app-pub-3640039090708511" data-ad-slot="1032826356"></ins>
+    </div>
+
+    <div class="conn">
+      <div class="globe">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <button class="pwrbtn" id="connectBtn">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="12" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="strow">
+        <div class="stdot" id="stdot"></div>
+        <span id="stlbl">Not Connected</span>
+      </div>
+      <!-- FREE badge -->
+      <div class="free-badge" id="freeBadge">🆓 Free Server — No Ads</div>
+      <p class="stsub" id="stsub">Tap to connect instantly</p>
+
+      <div class="ipc" id="ipc">
+        <div class="ipit"><span class="iplbl">IP Address</span><span class="ipval" id="ipVal">Loading...</span></div>
+        <div class="ipdiv"></div>
+        <div class="ipit"><span class="iplbl">Country</span><span class="ipval" id="ctryVal">--</span></div>
+        <div class="ipdiv"></div>
+        <div class="ipit"><span class="iplbl">ISP</span><span class="ipval" id="ispVal">--</span></div>
+      </div>
+    </div>
+
+    <div class="sprow" id="sprow">
+      <div class="spcard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div><div class="spval" id="upsp">0.0</div><div class="spunit">MB/s ↑</div></div>
+      </div>
+      <div class="spcard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M19 12l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div><div class="spval" id="dnsp">0.0</div><div class="spunit">MB/s ↓</div></div>
+      </div>
+      <div class="spcard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div><div class="spval" id="pingv">--</div><div class="spunit">ms</div></div>
+      </div>
+    </div>
+
+    <div class="srvsec">
+      <div class="sechdr"><span>Selected Server</span><button class="tbtn" onclick="nav('servers')">View All</button></div>
+      <div class="srvsel" onclick="nav('servers')">
+        <div class="sflag" id="selFlag">🇺🇸</div>
+        <div class="sinfo">
+          <div class="sname" id="selName">United States 🆓</div>
+          <div class="sping" id="selPing">New York · 38ms · Free</div>
+        </div>
+        <div class="bars" id="selBars">
+          <div class="bar b1 on"></div><div class="bar b2 on"></div>
+          <div class="bar b3 on"></div><div class="bar b4 on"></div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <!-- Native Ad (only shown for VIP servers) -->
+    <div class="adnat" id="adNative" style="display:none">
+      <span class="adlbl">Ad</span>
+      <ins class="adsbygoogle" style="display:block"
+           data-ad-client="ca-app-pub-3640039090708511" data-ad-slot="2154336334"
+           data-ad-format="fluid" data-ad-layout-key="-6t+ed+2i-1n-4w"></ins>
+    </div>
+
+    <div class="fgrid">
+      <div class="fcard" onclick="togFeat('kill')">
+        <div class="fico fi-r"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div><div class="fname">Kill Switch</div><div class="fst" id="killSt">Disabled</div></div>
+        <div class="tgl" id="killTg"><div class="tgl-t"></div></div>
+      </div>
+      <div class="fcard" onclick="togFeat('adblock')">
+        <div class="fico fi-b"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div><div class="fname">Ad Blocker</div><div class="fst" id="adSt">Disabled</div></div>
+        <div class="tgl" id="adTg"><div class="tgl-t"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVERS -->
+  <div id="screen-servers" class="screen">
+    <div class="shdr"><button class="bbtn" onclick="nav('home')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><h2>Choose Server</h2><div></div></div>
+    <div class="adbar"><span class="adlbl">Ad</span><ins class="adsbygoogle" style="display:inline-block;width:320px;height:50px" data-ad-client="ca-app-pub-3640039090708511" data-ad-slot="6413874499"></ins></div>
+    <div class="sbox"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/><line x1="21" y1="21" x2="16.65" y2="16.65" stroke="currentColor" stroke-width="2"/></svg><input type="text" id="srvQ" placeholder="Search country..." oninput="renderSrvs()"/></div>
+    <div class="stabs"><button class="tab on" onclick="setTab('all',this)">All</button><button class="tab" onclick="setTab('free',this)">Free 🆓</button><button class="tab" onclick="setTab('vip',this)">VIP ⭐</button></div>
+    <div class="slist" id="slist"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="screen-settings" class="screen">
+    <div class="shdr"><button class="bbtn" onclick="nav('home')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><h2>Settings</h2><div></div></div>
+    <div class="sbody">
+      <div class="sg"><div class="slbl">Connection</div>
+        <div class="sit"><span>Protocol</span><select class="ssel"><option>WireGuard</option><option>OpenVPN UDP</option><option>OpenVPN TCP</option></select></div>
+        <div class="sit" onclick="tog('autoTg')"><span>Auto Connect</span><div class="tgl sm" id="autoTg"><div class="tgl-t"></div></div></div>
+      </div>
+      <div class="sg"><div class="slbl">Privacy</div>
+        <div class="sit" onclick="tog('leakTg')"><span>DNS Leak Protection</span><div class="tgl sm on" id="leakTg"><div class="tgl-t"></div></div></div>
+      </div>
+      <div class="sg"><div class="slbl">About</div>
+        <div class="sit" id="installSt" style="display:none" onclick="triggerInstall()"><span>📲 Install App</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2"/></svg></div>
+        <div class="sit"><span>Version</span><span class="sval">1.2.0</span></div>
+        <div class="sit" onclick="window.open('https://github.com/jdbag/UVPN-android/blob/main/PRIVACY_POLICY.md')"><span>Privacy Policy</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none"><polyline points="9 18 15 12 9 6" stroke="currentColor" stroke-width="2"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREMIUM -->
+  <div id="screen-premium" class="screen">
+    <div class="shdr"><button class="bbtn" onclick="nav('home')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><polyline points="15 18 9 12 15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button><h2>Premium</h2><div></div></div>
+    <div class="phero"><img src="logo.svg" width="70" height="70" alt="U VPN"/><h2>Get U VPN Premium</h2><p>Blazing speed · VIP servers · Zero limits</p></div>
+    <div class="adbar" style="margin-bottom:12px"><span class="adlbl">Ad</span><ins class="adsbygoogle" style="display:inline-block;width:320px;height:100px" data-ad-client="ca-app-pub-3640039090708511" data-ad-slot="1328339820"></ins></div>
+    <div class="pfeats">
+      <div class="pfitem"><span class="pfic">⚡</span><div><b>5x Faster Speed</b><br/><span style="font-size:.76rem;color:var(--t2)">Dedicated VIP servers</span></div></div>
+      <div class="pfitem"><span class="pfic">🌍</span><div><b>70+ Countries</b><br/><span style="font-size:.76rem;color:var(--t2)">Global server network</span></div></div>
+      <div class="pfitem"><span class="pfic">🚫</span><div><b>No Ads</b><br/><span style="font-size:.76rem;color:var(--t2)">Completely ad-free</span></div></div>
+    </div>
+    <div class="plans">
+      <div class="plan chosen" onclick="pickPlan(this)"><div class="plbadge">Best Value</div><div class="plper">Yearly</div><div class="plprice">$2.99<span>/mo</span></div><div class="pltotal">$35.88/year</div></div>
+      <div class="plan" onclick="pickPlan(this)"><div class="plper">Monthly</div><div class="plprice">$7.99<span>/mo</span></div><div class="pltotal">Billed monthly</div></div>
+    </div>
+    <button class="ctabtn">Start 7-Day Free Trial</button>
+    <p class="ctanote">No credit card · Cancel anytime</p>
+  </div>
+
+  <nav class="bnav">
+    <button class="nbtn on" id="nb-home" onclick="nav('home')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="2"/><polyline points="9 22 9 12 15 12 15 22" stroke="currentColor" stroke-width="2"/></svg>Home
+    </button>
+    <button class="nbtn" id="nb-servers" onclick="nav('servers')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="2"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="currentColor" stroke-width="2"/></svg>Servers
+    </button>
+    <button class="nbtn" id="nb-premium" onclick="nav('premium')">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" stroke-width="2"/></svg>Premium
+    </button>
+    <button class="nbtn" id="nb-settings" onclick="nav('settings')">
+      <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2"/></svg>Settings
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// SERVERS — United States is FREE (no ad)
+// ============================================================
+const SRVS = [
+  {id:1, name:'United States', city:'New York',    flag:'🇺🇸', ping:38,  type:'free', spd:94, vpnIp:'162.159.192.100', isp:'Cloudflare Inc', country:'United States'},
+  {id:2, name:'United Kingdom', city:'London',     flag:'🇬🇧', ping:52,  type:'free', spd:88, vpnIp:'162.159.193.10',  isp:'Cloudflare Ltd',  country:'United Kingdom'},
+  {id:3, name:'Germany',       city:'Frankfurt',   flag:'🇩🇪', ping:63,  type:'free', spd:91, vpnIp:'162.159.194.25',  isp:'Cloudflare GmbH', country:'Germany'},
+  {id:4, name:'Japan',         city:'Tokyo',       flag:'🇯🇵', ping:108, type:'vip',  spd:99, vpnIp:'162.159.195.5',   isp:'Cloudflare KK',   country:'Japan'},
+  {id:5, name:'Canada',        city:'Toronto',     flag:'🇨🇦', ping:51,  type:'free', spd:87, vpnIp:'162.159.196.50',  isp:'Cloudflare Inc',  country:'Canada'},
+  {id:6, name:'Netherlands',   city:'Amsterdam',   flag:'🇳🇱', ping:58,  type:'vip',  spd:97, vpnIp:'162.159.197.20',  isp:'Cloudflare BV',   country:'Netherlands'},
+  {id:7, name:'Singapore',     city:'Singapore',   flag:'🇸🇬', ping:139, type:'vip',  spd:98, vpnIp:'162.159.198.15',  isp:'Cloudflare SG',   country:'Singapore'},
+  {id:8, name:'France',        city:'Paris',       flag:'🇫🇷', ping:67,  type:'free', spd:85, vpnIp:'162.159.199.30',  isp:'Cloudflare SAS',  country:'France'},
+  {id:9, name:'Australia',     city:'Sydney',      flag:'🇦🇺', ping:188, type:'vip',  spd:90, vpnIp:'162.159.200.10',  isp:'Cloudflare AU',   country:'Australia'},
+  {id:10,name:'Sweden',        city:'Stockholm',   flag:'🇸🇪', ping:72,  type:'free', spd:88, vpnIp:'162.159.201.5',   isp:'Cloudflare AB',   country:'Sweden'},
+  {id:11,name:'UAE',           city:'Dubai',       flag:'🇦🇪', ping:33,  type:'vip',  spd:97, vpnIp:'162.159.202.50',  isp:'Cloudflare ME',   country:'UAE'},
+  {id:12,name:'South Korea',   city:'Seoul',       flag:'🇰🇷', ping:122, type:'vip',  spd:99, vpnIp:'162.159.203.25',  isp:'Cloudflare KR',   country:'South Korea'},
+];
+
+// FREE servers = no ad needed
+const FREE_IDS = [1,2,3,5,8,10]; // US, UK, DE, CA, FR, SE
+
+const S = {
+  connected:false, connecting:false,
+  srv: SRVS[0],  // default = United States (FREE)
+  kill:false, adblock:false, spTimer:null, cCount:0
+};
+let curTab='all';
+
+// ── Real IP fetch (does NOT break internet — read-only HTTP request)
+async function fetchRealIP() {
+  const apis = [
+    () => fetch('https://ipapi.co/json/',{cache:'no-store',signal:AbortSignal.timeout(6000)})
+          .then(r=>r.json()).then(d=>({ip:d.ip,country:d.country_name||'--',isp:(d.org||'--').replace(/^AS\d+\s/,'').substring(0,14)})),
+    () => fetch('https://api.ipify.org?format=json',{cache:'no-store',signal:AbortSignal.timeout(5000)})
+          .then(r=>r.json()).then(d=>({ip:d.ip,country:'--',isp:'--'}))
+  ];
+  for(const api of apis) {
+    try { return await api(); } catch(e) {}
+  }
+  return {ip:'--',country:'--',isp:'--'};
+}
+
+function setIPDisplay(ip,country,isp) {
+  document.getElementById('ipVal').textContent   = ip;
+  document.getElementById('ctryVal').textContent = country;
+  document.getElementById('ispVal').textContent  = isp;
+  document.getElementById('ipc').classList.add('on');
+}
+
+// ── SPLASH
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const sp = document.getElementById('splash');
+    sp.style.transition='opacity .4s'; sp.style.opacity='0';
+    setTimeout(() => {
+      sp.style.display='none';
+      document.getElementById('app').classList.remove('hidden');
+      initAds();
+      fetchRealIP().then(d => setIPDisplay(d.ip, d.country, d.isp));
+    }, 400);
+  }, 2300);
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+});
+
+function initAds() {
+  try { document.querySelectorAll('.adsbygoogle').forEach(ins => {
+    if(!ins.dataset.adsbygoogleStatus) (adsbygoogle=window.adsbygoogle||[]).push({});
+  }); } catch(e){}
+}
+
+// ── NAVIGATION
+function nav(s) {
+  document.querySelectorAll('.screen').forEach(x=>x.classList.remove('act'));
+  document.getElementById('screen-'+s).classList.add('act');
+  document.querySelectorAll('.nbtn').forEach(b=>b.classList.remove('on'));
+  const nb=document.getElementById('nb-'+s); if(nb)nb.classList.add('on');
+  if(s==='servers') renderSrvs();
+}
+
+// ── CONNECT
+document.getElementById('connectBtn').addEventListener('click', () => {
+  if(S.connecting) return;
+  S.connected ? doDisconnect() : doConnect();
+});
+
+function doConnect() {
+  const isFree = FREE_IDS.includes(S.srv.id);
+  if(isFree) {
+    startConnect();
+  } else {
+    // VIP — show rewarded ad
+    showRewarded(S.srv.name, () => startConnect());
+  }
+}
+
+function startConnect() {
+  S.connecting = true;
+  const btn = document.getElementById('connectBtn');
+  btn.classList.add('connecting');
+  setStatus('connecting','Connecting...', `Routing through ${S.srv.city}...`);
+  document.getElementById('freeBadge').textContent =
+    FREE_IDS.includes(S.srv.id) ? '🆓 Free Server — No Ads' : '⭐ VIP Server';
+
+  // Simulate connection (2.2s)
+  setTimeout(() => {
+    S.connecting=false; S.connected=true;
+    btn.classList.remove('connecting'); btn.classList.add('connected');
+
+    // Show VPN IP (Cloudflare IP) — internet NOT cut, this is just display
+    setIPDisplay(S.srv.vpnIp, S.srv.flag+' '+S.srv.country, S.srv.isp);
+    setStatus('connected','Connected', `${S.srv.city} · Encrypted`);
+
+    document.getElementById('sprow').classList.add('on');
+    startSpeed();
+    toast(`✅ Connected — ${S.srv.name}`);
+  }, 2200);
+}
+
+function doDisconnect() {
+  S.connected=false; clearInterval(S.spTimer);
+  document.getElementById('connectBtn').classList.remove('connected','connecting');
+  setStatus('','Not Connected','Tap to connect instantly');
+  document.getElementById('sprow').classList.remove('on');
+  document.getElementById('freeBadge').textContent = '🆓 Free Server — No Ads';
+  ['upsp','dnsp'].forEach(id=>document.getElementById(id).textContent='0.0');
+  document.getElementById('pingv').textContent='--';
+  toast('🔴 Disconnected');
+  // Re-fetch real IP after disconnect
+  fetchRealIP().then(d => setIPDisplay(d.ip, d.country, d.isp));
+}
+
+function setStatus(type,lbl,sub) {
+  const dot = document.getElementById('stdot');
+  dot.className = 'stdot'+(type?' '+type:'');
+  document.getElementById('stlbl').textContent=lbl;
+  document.getElementById('stsub').textContent=sub;
+}
+
+function startSpeed() {
+  const s=S.srv;
+  S.spTimer=setInterval(()=>{
+    if(!S.connected){clearInterval(S.spTimer);return;}
+    document.getElementById('dnsp').textContent=((s.spd/100)*13+(Math.random()-.5)*3).toFixed(1);
+    document.getElementById('upsp').textContent=((s.spd/100)*6.5+(Math.random()-.5)*1.8).toFixed(1);
+    document.getElementById('pingv').textContent=Math.max(8,s.ping+Math.floor((Math.random()-.5)*7));
+  },1200);
+}
+
+// ── SERVER LIST
+function setTab(t,el){curTab=t;document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));el.classList.add('on');renderSrvs();}
+
+function renderSrvs() {
+  const q=(document.getElementById('srvQ')?.value||'').toLowerCase();
+  const list=document.getElementById('slist'); list.innerHTML='';
+  const fl=SRVS.filter(s=>(curTab==='all'||s.type===curTab)&&(!q||s.name.toLowerCase().includes(q)||s.city.toLowerCase().includes(q)));
+  if(!fl.length){list.innerHTML='<div style="text-align:center;color:var(--t2);padding:24px">No results</div>';return;}
+  fl.forEach(s=>{
+    const el=document.createElement('div');
+    el.className='si'+(S.srv?.id===s.id?' chosen':'');
+    const pc=s.ping<80?'good':s.ping<140?'ok':'slow';
+    const isFree=FREE_IDS.includes(s.id);
+    const badge=isFree?'<span class="bfree">FREE 🆓</span>':'<span class="bvip">VIP ⭐</span>';
+    el.innerHTML=`<div class="si-f">${s.flag}</div>
+      <div class="si-i"><div class="si-n">${s.name}</div>
+      <div class="si-d">${s.city} · ${badge}</div></div>
+      <div class="si-p ${pc}">${s.ping}ms</div>`;
+    el.onclick=()=>pickSrv(s);
+    list.appendChild(el);
+  });
+}
+
+function pickSrv(s) {
+  S.srv=s;
+  updateSelUI();
+  nav('home');
+  const isFree=FREE_IDS.includes(s.id);
+  document.getElementById('adNative').style.display = isFree ? 'none' : 'block';
+  document.getElementById('freeBadge').textContent = isFree ? '🆓 Free Server — No Ads' : '⭐ VIP Server · Watch Ad to Connect';
+  if(S.connected){doDisconnect(); setTimeout(doConnect,700);}
+  toast(isFree ? `🆓 ${s.name} — Free` : `⭐ ${s.name} — VIP`);
+}
+
+function updateSelUI() {
+  const s=S.srv; if(!s) return;
+  const isFree=FREE_IDS.includes(s.id);
+  document.getElementById('selFlag').textContent=s.flag;
+  document.getElementById('selName').textContent=s.name+(isFree?' 🆓':' ⭐');
+  document.getElementById('selPing').textContent=`${s.city} · ${s.ping}ms · ${isFree?'Free':'VIP'}`;
+  const q=s.ping<60?4:s.ping<100?3:s.ping<150?2:1;
+  document.querySelectorAll('#selBars .bar').forEach((b,i)=>b.classList.toggle('on',i<q));
+}
+
+// ── FEATURES
+function togFeat(f){
+  if(f==='kill'){S.kill=!S.kill;document.getElementById('killTg').classList.toggle('on',S.kill);const st=document.getElementById('killSt');st.textContent=S.kill?'Enabled':'Disabled';st.className='fst'+(S.kill?' on':'');toast(S.kill?'🛡️ Kill Switch ON':'🛡️ Kill Switch OFF');}
+  else{S.adblock=!S.adblock;document.getElementById('adTg').classList.toggle('on',S.adblock);const st=document.getElementById('adSt');st.textContent=S.adblock?'Enabled':'Disabled';st.className='fst'+(S.adblock?' on':'');toast(S.adblock?'🚫 Ad Blocker ON':'🚫 Ad Blocker OFF');}
+}
+function tog(id){document.getElementById(id).classList.toggle('on');}
+function pickPlan(el){document.querySelectorAll('.plan').forEach(p=>p.classList.remove('chosen'));el.classList.add('chosen');}
+
+// ── REWARDED AD
+let _rwCb=null;
+function showRewarded(name,cb){_rwCb=cb;document.getElementById('rwOv').classList.remove('hidden');}
+function closeRewarded(){document.getElementById('rwOv').classList.add('hidden');}
+function watchRewarded(){
+  const b=document.getElementById('rwBtn');b.textContent='⏳ Loading...';b.disabled=true;
+  try{(adsbygoogle=window.adsbygoogle||[]).push({});}catch(e){}
+  setTimeout(()=>{closeRewarded();if(_rwCb)_rwCb();b.textContent='▶ Watch Ad Now';b.disabled=false;},5000);
+}
+
+// ── TOAST
+let _tt;
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(_tt);_tt=setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ── PWA INSTALL
+let _prompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();_prompt=e;
+  document.getElementById('ib').classList.remove('hidden');
+  document.getElementById('installAppBtn').style.display='flex';
+  document.getElementById('installSt').style.display='flex';
+});
+document.getElementById('installBtn').addEventListener('click',triggerInstall);
+document.getElementById('dismissIb').addEventListener('click',()=>document.getElementById('ib').classList.add('hidden'));
+function triggerInstall(){if(_prompt){_prompt.prompt();_prompt.userChoice.then(()=>{_prompt=null;});}}
+window.addEventListener('appinstalled',()=>{toast('🎉 U VPN installed!');document.getElementById('ib').classList.add('hidden');});
+</script>
+</body>
+</html>
