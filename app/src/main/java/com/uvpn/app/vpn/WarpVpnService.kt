@@ -63,21 +63,33 @@ class WarpVpnService : VpnService() {
         val account = WarpConfig.accounts.getOrElse(accountIdx) { WarpConfig.accounts[0] }
 
         try {
-            // Build VPN tunnel
-            // NOTE: allowBypass() is called on the Builder object (not on VpnService)
+            // ── Step 1: Protect UDP socket BEFORE building tunnel ──
+            // This is CRITICAL — socket must be protected before
+            // the VPN interface is established to avoid routing loop
+            val socket = DatagramSocket()
+            protect(socket)
+            socket.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
+            socket.soTimeout = 10000
+            udpSocket = socket
+
+            // ── Step 2: Build the TUN interface ──────────────────
             val builder = Builder()
                 .setSession("U VPN")
                 .addAddress(
                     account.clientIPv4.substringBefore("/"),
                     account.clientIPv4.substringAfter("/").toIntOrNull() ?: 32
                 )
-                .addRoute("0.0.0.0", 0)
-                .addRoute("::", 0)
+                // Route most traffic through VPN but exclude the WARP server itself
+                // to prevent internet cutoff
+                .addRoute("0.0.0.0", 1)          // 0.0.0.0/1 (first half of internet)
+                .addRoute("128.0.0.0", 1)         // 128.0.0.0/1 (second half)
+                // Exclude Cloudflare WARP endpoints from VPN routing
+                .addDisallowedApplication(packageName)  // exclude ourselves
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("1.0.0.1")
                 .setMtu(MTU)
                 .setBlocking(false)
-                .allowBypass()   // ← correct: Builder method, allows apps to bypass VPN
+                .allowBypass()
 
             tunFd = builder.establish()
 
@@ -87,18 +99,11 @@ class WarpVpnService : VpnService() {
                 return
             }
 
-            // UDP socket to Cloudflare WARP
-            // protect() is a VpnService method — exempts socket from VPN routing
-            val socket = DatagramSocket()
-            protect(socket)   // ← correct: VpnService.protect()
-            socket.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
-            socket.soTimeout = 5000
-            udpSocket = socket
-
             startForeground(NOTIF_ID, buildNotif("Connected • ${account.flag} ${account.region}"))
             broadcast(ST_CONNECTED)
-            Log.i(TAG, "Connected — ${account.region}")
+            Log.i(TAG, "VPN connected — ${account.region}")
 
+            // ── Step 3: Packet forwarding loop ───────────────────
             val inJob  = scope.launch { runInbound() }
             val outJob = scope.launch { runOutbound() }
             joinAll(inJob, outJob)
@@ -122,17 +127,17 @@ class WarpVpnService : VpnService() {
         try {
             while (isActive && tunFd != null) {
                 val len = stream.read(buf)
-                if (len > 0) udp.send(DatagramPacket(buf, len))
+                if (len > 0) udp.send(DatagramPacket(buf.copyOf(len), len))
             }
         } catch (e: Exception) {
-            if (isActive) Log.d(TAG, "Outbound: ${e.message}")
+            if (isActive) Log.d(TAG, "Outbound ended: ${e.message}")
         }
     }
 
     private suspend fun runInbound() = withContext(Dispatchers.IO) {
         val tun = tunFd ?: return@withContext
         val udp = udpSocket ?: return@withContext
-        val buf = ByteArray(MTU)
+        val buf = ByteArray(MTU + 100)
         val stream = FileOutputStream(tun.fileDescriptor)
         try {
             while (isActive && tunFd != null) {
@@ -141,7 +146,7 @@ class WarpVpnService : VpnService() {
                 if (pkt.length > 0) stream.write(buf, 0, pkt.length)
             }
         } catch (e: Exception) {
-            if (isActive) Log.d(TAG, "Inbound: ${e.message}")
+            if (isActive) Log.d(TAG, "Inbound ended: ${e.message}")
         }
     }
 
@@ -161,23 +166,17 @@ class WarpVpnService : VpnService() {
     }
 
     private fun createChannel() {
-        val ch = NotificationChannel(
-            CH_ID, "VPN Status", NotificationManager.IMPORTANCE_LOW
-        ).apply { setShowBadge(false) }
+        val ch = NotificationChannel(CH_ID, "VPN Status",
+            NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) }
         getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
     private fun buildNotif(text: String): Notification {
-        val tap = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        val stop = PendingIntent.getService(
-            this, 1,
+        val tap = PendingIntent.getActivity(this, 0,
+            Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val stop = PendingIntent.getService(this, 1,
             Intent(this, WarpVpnService::class.java).apply { action = ACTION_DISCONNECT },
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CH_ID)
             .setContentTitle("U VPN")
             .setContentText(text)
