@@ -47,10 +47,7 @@ class WarpVpnService : VpnService() {
                 scope.launch { connect(idx) }
                 START_STICKY
             }
-            ACTION_DISCONNECT -> {
-                disconnect()
-                START_NOT_STICKY
-            }
+            ACTION_DISCONNECT -> { disconnect(); START_NOT_STICKY }
             else -> START_NOT_STICKY
         }
     }
@@ -58,112 +55,87 @@ class WarpVpnService : VpnService() {
     private suspend fun connect(accountIdx: Int) {
         broadcast(ST_CONNECTING)
         createChannel()
-        startForeground(NOTIF_ID, buildNotif("Connecting to Cloudflare WARP..."))
-
+        startForeground(NOTIF_ID, buildNotif("Connecting..."))
         val account = WarpConfig.accounts.getOrElse(accountIdx) { WarpConfig.accounts[0] }
-
         try {
-            // ── Step 1: Protect UDP socket BEFORE building tunnel ──
-            // This is CRITICAL — socket must be protected before
-            // the VPN interface is established to avoid routing loop
+            // ── FIX: protect socket BEFORE building tunnel ──────────
+            // Without this, the UDP socket gets routed into the VPN
+            // itself causing a routing loop and cutting internet
             val socket = DatagramSocket()
             protect(socket)
             socket.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
-            socket.soTimeout = 10000
+            socket.soTimeout = 10_000
             udpSocket = socket
 
-            // ── Step 2: Build the TUN interface ──────────────────
-            val builder = Builder()
+            // ── Build TUN with split routes (not 0.0.0.0/0) ────────
+            // 0.0.0.0/1 + 128.0.0.0/1 = all IPv4 but more specific
+            // than a host route so protected socket still bypasses
+            tunFd = Builder()
                 .setSession("U VPN")
                 .addAddress(
                     account.clientIPv4.substringBefore("/"),
                     account.clientIPv4.substringAfter("/").toIntOrNull() ?: 32
                 )
-                // Route most traffic through VPN but exclude the WARP server itself
-                // to prevent internet cutoff
-                .addRoute("0.0.0.0", 1)          // 0.0.0.0/1 (first half of internet)
-                .addRoute("128.0.0.0", 1)         // 128.0.0.0/1 (second half)
-                // Exclude Cloudflare WARP endpoints from VPN routing
-                .addDisallowedApplication(packageName)  // exclude ourselves
+                .addRoute("0.0.0.0", 1)
+                .addRoute("128.0.0.0", 1)
+                .addRoute("::", 0)
                 .addDnsServer("1.1.1.1")
                 .addDnsServer("1.0.0.1")
+                .addDisallowedApplication(packageName)
                 .setMtu(MTU)
                 .setBlocking(false)
                 .allowBypass()
+                .establish()
 
-            tunFd = builder.establish()
-
-            if (tunFd == null) {
-                broadcast(ST_NO_PERM)
-                stopSelf()
-                return
-            }
+            if (tunFd == null) { broadcast(ST_NO_PERM); stopSelf(); return }
 
             startForeground(NOTIF_ID, buildNotif("Connected • ${account.flag} ${account.region}"))
             broadcast(ST_CONNECTED)
             Log.i(TAG, "VPN connected — ${account.region}")
 
-            // ── Step 3: Packet forwarding loop ───────────────────
-            val inJob  = scope.launch { runInbound() }
-            val outJob = scope.launch { runOutbound() }
-            joinAll(inJob, outJob)
+            val j1 = scope.launch { runInbound() }
+            val j2 = scope.launch { runOutbound() }
+            joinAll(j1, j2)
 
-        } catch (e: SecurityException) {
-            Log.e(TAG, "Security: ${e.message}")
-            broadcast(ST_NO_PERM)
-            stopSelf()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error: ${e.message}")
-            broadcast(ST_ERROR)
-            stopSelf()
-        }
+        } catch (e: SecurityException) { broadcast(ST_NO_PERM); stopSelf()
+        } catch (e: Exception) { Log.e(TAG, e.message ?: ""); broadcast(ST_ERROR); stopSelf() }
     }
 
     private suspend fun runOutbound() = withContext(Dispatchers.IO) {
-        val tun = tunFd ?: return@withContext
-        val udp = udpSocket ?: return@withContext
         val buf = ByteArray(MTU)
-        val stream = FileInputStream(tun.fileDescriptor)
+        val stream = FileInputStream(tunFd?.fileDescriptor ?: return@withContext)
         try {
             while (isActive && tunFd != null) {
                 val len = stream.read(buf)
-                if (len > 0) udp.send(DatagramPacket(buf.copyOf(len), len))
+                if (len > 0) udpSocket?.send(DatagramPacket(buf.copyOf(len), len))
             }
-        } catch (e: Exception) {
-            if (isActive) Log.d(TAG, "Outbound ended: ${e.message}")
-        }
+        } catch (_: Exception) {}
     }
 
     private suspend fun runInbound() = withContext(Dispatchers.IO) {
-        val tun = tunFd ?: return@withContext
-        val udp = udpSocket ?: return@withContext
         val buf = ByteArray(MTU + 100)
-        val stream = FileOutputStream(tun.fileDescriptor)
+        val stream = FileOutputStream(tunFd?.fileDescriptor ?: return@withContext)
         try {
             while (isActive && tunFd != null) {
                 val pkt = DatagramPacket(buf, buf.size)
-                udp.receive(pkt)
+                udpSocket?.receive(pkt)
                 if (pkt.length > 0) stream.write(buf, 0, pkt.length)
             }
-        } catch (e: Exception) {
-            if (isActive) Log.d(TAG, "Inbound ended: ${e.message}")
-        }
+        } catch (_: Exception) {}
     }
 
     private fun disconnect() {
         scope.coroutineContext.cancelChildren()
         runCatching { udpSocket?.close() }
         runCatching { tunFd?.close() }
-        udpSocket = null
-        tunFd = null
+        udpSocket = null; tunFd = null
         broadcast(ST_DISCONNECTED)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
-    private fun broadcast(state: String) {
-        sendBroadcast(Intent(BROADCAST).putExtra(EXTRA_STATE, state))
-    }
+    private fun broadcast(s: String) =
+        sendBroadcast(Intent(BROADCAST).putExtra(EXTRA_STATE, s))
 
     private fun createChannel() {
         val ch = NotificationChannel(CH_ID, "VPN Status",
@@ -172,9 +144,11 @@ class WarpVpnService : VpnService() {
     }
 
     private fun buildNotif(text: String): Notification {
-        val tap = PendingIntent.getActivity(this, 0,
-            Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
-        val stop = PendingIntent.getService(this, 1,
+        val tap = PendingIntent.getActivity(
+            this, 0, Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE)
+        val stop = PendingIntent.getService(
+            this, 1,
             Intent(this, WarpVpnService::class.java).apply { action = ACTION_DISCONNECT },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CH_ID)
