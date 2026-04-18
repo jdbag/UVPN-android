@@ -15,17 +15,12 @@ import androidx.lifecycle.lifecycleScope
 import com.uvpn.app.R
 import com.uvpn.app.databinding.ActivityMainBinding
 import com.uvpn.app.vpn.WarpVpnService
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var b: ActivityMainBinding
     private val vm: MainViewModel by viewModels()
-
-    // ── FREE country index — United States, no ads needed ──
     private val FREE_IDX = 0
 
     private val permLauncher = registerForActivityResult(
@@ -45,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         b = ActivityMainBinding.inflate(layoutInflater)
         setContentView(b.root)
         AdManager.init(this)
-        vm.selectAccount(FREE_IDX)       // default = free server
+        vm.selectAccount(FREE_IDX)
         observe()
         clicks()
         updateAdUi()
@@ -70,32 +65,28 @@ class MainActivity : AppCompatActivity() {
         timerJob?.cancel()
     }
 
-    // ── Update ad buttons based on selected server ──────────
     private fun updateAdUi() {
-        val idx        = vm.accountIdx.value ?: 0
-        val isFree     = (idx == FREE_IDX)
-        val remaining  = AdManager.remainingMinutes(this)
-        val watched    = AdManager.adsWatchedInSession(this)
+        val isFree    = (vm.accountIdx.value ?: 0) == FREE_IDX
+        val remaining = AdManager.remainingMinutes(this)
+        val watched   = AdManager.adsWatchedInSession(this)
         vm.updateSessionLabel(remaining, watched)
 
         if (isFree) {
-            // Free server — hide everything ad-related
-            b.adCard.visibility  = View.GONE
+            b.adCard.visibility = View.GONE
+            b.tvSession.text    = "🆓 Free Server — No Ads"
         } else {
-            b.adCard.visibility  = View.VISIBLE
+            b.adCard.visibility = View.VISIBLE
             when {
                 remaining <= 0 -> {
                     b.btnAd1.visibility = View.VISIBLE
                     b.btnAd2.visibility = View.GONE
                     b.btnAd1.isEnabled  = true
                     b.btnAd1.text = "▶  Watch Ad — Get 2 Hours Free"
-                    b.tvSession.text    = "Watch an ad to connect"
                 }
                 watched == 1 -> {
                     b.btnAd1.visibility = View.GONE
                     b.btnAd2.visibility = View.VISIBLE
                     b.btnAd2.isEnabled  = true
-                    b.btnAd2.text = "▶  Watch 2nd Ad — Upgrade to 12 Hours"
                 }
                 else -> {
                     b.btnAd1.visibility = View.GONE
@@ -105,14 +96,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ── Observers ───────────────────────────────────────────
     private fun observe() {
-        vm.state.observe(this)        { updateUi(it) }
-        vm.sessionLabel.observe(this) { if ((vm.accountIdx.value ?: 0) != FREE_IDX) b.tvSession.text = it }
-        vm.adsWatched.observe(this)   { w ->
-            b.ivStar1.setColorFilter(if (w >= 1) Color.parseColor("#F59E0B") else Color.parseColor("#2A3A4A"))
-            b.ivStar2.setColorFilter(if (w >= 2) Color.parseColor("#F59E0B") else Color.parseColor("#2A3A4A"))
-        }
+        vm.state.observe(this) { updateUi(it) }
         vm.ipInfo.observe(this) {
             b.tvIp.text      = it.ip
             b.tvCountry.text = it.country
@@ -122,16 +107,20 @@ class MainActivity : AppCompatActivity() {
         vm.dn.observe(this)   { b.tvDn.text = it }
         vm.up.observe(this)   { b.tvUp.text = it }
         vm.ping.observe(this) { b.tvPing.text = it }
+        vm.adsWatched.observe(this) { w ->
+            b.ivStar1.setColorFilter(
+                if (w >= 1) Color.parseColor("#F59E0B") else Color.parseColor("#2A3A4A"))
+            b.ivStar2.setColorFilter(
+                if (w >= 2) Color.parseColor("#F59E0B") else Color.parseColor("#2A3A4A"))
+        }
         vm.accountIdx.observe(this) { idx ->
-            val acc    = vm.accounts.getOrNull(idx) ?: return@observe
-            val isFree = (idx == FREE_IDX)
+            val acc = vm.accounts.getOrNull(idx) ?: return@observe
             b.tvSelServer.text = "${acc.flag}  ${acc.region}"
-            b.tvSelDetail.text = if (isFree) "🆓 Free • No Ads" else "⭐ VIP • Ad Required"
+            b.tvSelDetail.text = if (idx == FREE_IDX) "🆓 Free • No Ads" else "⭐ VIP • Ad Required"
             updateAdUi()
         }
     }
 
-    // ── Clicks ──────────────────────────────────────────────
     private fun clicks() {
         b.btnConnect.setOnClickListener {
             when (vm.state.value) {
@@ -147,38 +136,49 @@ class MainActivity : AppCompatActivity() {
 
     private fun onConnectTap() {
         val isFree = (vm.accountIdx.value ?: 0) == FREE_IDX
-        when {
-            isFree                           -> requestPerm()
-            AdManager.hasActiveSession(this) -> requestPerm()
-            else -> AlertDialog.Builder(this)
+        if (isFree || AdManager.hasActiveSession(this)) {
+            requestPerm()
+        } else {
+            AlertDialog.Builder(this)
                 .setTitle("VIP Server")
-                .setMessage("Watch an ad to unlock this server.\nOr use the 🆓 Free Server (no ads).")
-                .setPositiveButton("Watch Ad")      { _, _ -> showAd1() }
-                .setNeutralButton("Free Server")    { _, _ -> vm.selectAccount(FREE_IDX); requestPerm() }
+                .setMessage("Watch an ad to unlock.\nOr use 🆓 Free Server (no ads).")
+                .setPositiveButton("Watch Ad") { _, _ -> showAd1() }
+                .setNeutralButton("Free Server") { _, _ ->
+                    vm.selectAccount(FREE_IDX); requestPerm()
+                }
                 .setNegativeButton("Cancel", null)
                 .show()
         }
     }
 
-    // ── Ad 1 → 2 hours ──────────────────────────────────────
     private fun showAd1() {
         b.btnAd1.isEnabled = false; b.btnAd1.text = "Loading..."
         AdManager.showFirstAd(this,
-            onGranted = { h -> toast("✅ ${h}h unlocked!"); updateAdUi(); b.root.postDelayed({ requestPerm() }, 400) },
-            onFailed  = { toast("Ad not ready"); b.btnAd1.isEnabled = true; b.btnAd1.text = "▶  Watch Ad — Get 2 Hours Free" }
+            onGranted = { h ->
+                toast("✅ ${h}h unlocked!")
+                updateAdUi()
+                b.root.postDelayed({ requestPerm() }, 400)
+            },
+            onFailed = {
+                toast("Ad not ready")
+                b.btnAd1.isEnabled = true
+                b.btnAd1.text = "▶  Watch Ad — Get 2 Hours Free"
+            }
         )
     }
 
-    // ── Ad 2 → 12 hours ─────────────────────────────────────
     private fun showAd2() {
         b.btnAd2.isEnabled = false; b.btnAd2.text = "Loading..."
         AdManager.showSecondAd(this,
             onGranted = { h -> toast("🎉 ${h}h unlocked!"); updateAdUi() },
-            onFailed  = { toast("Ad not ready"); b.btnAd2.isEnabled = true; b.btnAd2.text = "▶  Watch 2nd Ad — Upgrade to 12 Hours" }
+            onFailed = {
+                toast("Ad not ready")
+                b.btnAd2.isEnabled = true
+                b.btnAd2.text = "▶  Watch 2nd Ad — Upgrade to 12 Hours"
+            }
         )
     }
 
-    // ── VPN control ─────────────────────────────────────────
     private fun requestPerm() {
         val i = VpnService.prepare(this)
         if (i != null) permLauncher.launch(i) else doStart()
@@ -200,7 +200,6 @@ class MainActivity : AppCompatActivity() {
         updateAdUi()
     }
 
-    // ── Server picker ────────────────────────────────────────
     private fun pickServer() {
         val items = vm.accounts.mapIndexed { i, acc ->
             "${acc.flag}  ${acc.region}${if (i == FREE_IDX) " 🆓 Free" else " ⭐ VIP"}"
@@ -209,11 +208,13 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Choose Server")
             .setItems(items) { _, idx ->
                 vm.selectAccount(idx)
-                if (vm.state.value == VpnState.CONNECTED) { doStop(); b.root.postDelayed({ onConnectTap() }, 1000) }
+                if (vm.state.value == VpnState.CONNECTED) {
+                    doStop()
+                    b.root.postDelayed({ onConnectTap() }, 1000)
+                }
             }.show()
     }
 
-    // ── UI state ─────────────────────────────────────────────
     private fun updateUi(state: VpnState) {
         when (state) {
             VpnState.IDLE -> {
@@ -237,10 +238,11 @@ class MainActivity : AppCompatActivity() {
                 b.tvProtection.setTextColor(Color.parseColor("#F59E0B"))
             }
             VpnState.CONNECTED -> {
+                // ── KEY FIX: shows DISCONNECT (red) when connected ──
                 b.btnConnect.text = "DISCONNECT"
-                b.btnConnect.setBackgroundColor(Color.parseColor("#16A34A"))
+                b.btnConnect.setBackgroundColor(Color.parseColor("#DC2626"))
                 b.tvStatus.text    = "Connected"
-                b.tvStatusSub.text = "Cloudflare WARP • IP Changed ✓"
+                b.tvStatusSub.text = "Tap to disconnect"
                 b.dotStatus.setBackgroundResource(R.drawable.dot_green)
                 b.layoutSpeed.visibility = View.VISIBLE
                 b.tvProtection.text = "🛡️  Protected"
@@ -248,7 +250,7 @@ class MainActivity : AppCompatActivity() {
             }
             VpnState.ERROR -> {
                 b.btnConnect.text = "RETRY"
-                b.btnConnect.setBackgroundColor(Color.parseColor("#DC2626"))
+                b.btnConnect.setBackgroundColor(Color.parseColor("#7C3AED"))
                 b.tvStatus.text    = "Connection Failed"
                 b.tvStatusSub.text = "Tap RETRY"
                 b.dotStatus.setBackgroundResource(R.drawable.dot_red)
@@ -259,5 +261,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun toast(msg: String) = Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+    private fun toast(msg: String) =
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
 }
