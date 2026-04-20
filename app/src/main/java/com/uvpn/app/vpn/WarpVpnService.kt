@@ -4,7 +4,6 @@ import android.app.*
 import android.content.Intent
 import android.net.VpnService
 import android.os.ParcelFileDescriptor
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.uvpn.app.R
 import com.uvpn.app.ui.MainActivity
@@ -58,18 +57,13 @@ class WarpVpnService : VpnService() {
         startForeground(NOTIF_ID, buildNotif("Connecting..."))
         val account = WarpConfig.accounts.getOrElse(accountIdx) { WarpConfig.accounts[0] }
         try {
-            // ── FIX: protect socket BEFORE building tunnel ──────────
-            // Without this, the UDP socket gets routed into the VPN
-            // itself causing a routing loop and cutting internet
+            // protect socket BEFORE building tunnel — prevents internet cut
             val socket = DatagramSocket()
             protect(socket)
             socket.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
             socket.soTimeout = 10_000
             udpSocket = socket
 
-            // ── Build TUN with split routes (not 0.0.0.0/0) ────────
-            // 0.0.0.0/1 + 128.0.0.0/1 = all IPv4 but more specific
-            // than a host route so protected socket still bypasses
             tunFd = Builder()
                 .setSession("U VPN")
                 .addAddress(
@@ -88,40 +82,23 @@ class WarpVpnService : VpnService() {
                 .establish()
 
             if (tunFd == null) { broadcast(ST_NO_PERM); stopSelf(); return }
-
             startForeground(NOTIF_ID, buildNotif("Connected • ${account.flag} ${account.region}"))
             broadcast(ST_CONNECTED)
-            Log.i(TAG, "VPN connected — ${account.region}")
-
-            val j1 = scope.launch { runInbound() }
-            val j2 = scope.launch { runOutbound() }
-            joinAll(j1, j2)
-
+            joinAll(scope.launch { runInbound() }, scope.launch { runOutbound() })
         } catch (e: SecurityException) { broadcast(ST_NO_PERM); stopSelf()
-        } catch (e: Exception) { Log.e(TAG, e.message ?: ""); broadcast(ST_ERROR); stopSelf() }
+        } catch (e: Exception) { broadcast(ST_ERROR); stopSelf() }
     }
 
     private suspend fun runOutbound() = withContext(Dispatchers.IO) {
         val buf = ByteArray(MTU)
-        val stream = FileInputStream(tunFd?.fileDescriptor ?: return@withContext)
-        try {
-            while (isActive && tunFd != null) {
-                val len = stream.read(buf)
-                if (len > 0) udpSocket?.send(DatagramPacket(buf.copyOf(len), len))
-            }
-        } catch (_: Exception) {}
+        val s = FileInputStream(tunFd?.fileDescriptor ?: return@withContext)
+        try { while (isActive && tunFd != null) { val n = s.read(buf); if (n > 0) udpSocket?.send(DatagramPacket(buf.copyOf(n), n)) } } catch (_: Exception) {}
     }
 
     private suspend fun runInbound() = withContext(Dispatchers.IO) {
         val buf = ByteArray(MTU + 100)
-        val stream = FileOutputStream(tunFd?.fileDescriptor ?: return@withContext)
-        try {
-            while (isActive && tunFd != null) {
-                val pkt = DatagramPacket(buf, buf.size)
-                udpSocket?.receive(pkt)
-                if (pkt.length > 0) stream.write(buf, 0, pkt.length)
-            }
-        } catch (_: Exception) {}
+        val s = FileOutputStream(tunFd?.fileDescriptor ?: return@withContext)
+        try { while (isActive && tunFd != null) { val p = DatagramPacket(buf, buf.size); udpSocket?.receive(p); if (p.length > 0) s.write(buf, 0, p.length) } } catch (_: Exception) {}
     }
 
     private fun disconnect() {
@@ -134,32 +111,26 @@ class WarpVpnService : VpnService() {
         stopSelf()
     }
 
-    private fun broadcast(s: String) =
-        sendBroadcast(Intent(BROADCAST).putExtra(EXTRA_STATE, s))
+    private fun broadcast(s: String) = sendBroadcast(Intent(BROADCAST).putExtra(EXTRA_STATE, s))
 
     private fun createChannel() {
-        val ch = NotificationChannel(CH_ID, "VPN Status",
-            NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) }
-        getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CH_ID, "VPN", NotificationManager.IMPORTANCE_LOW)
+                .apply { setShowBadge(false) }
+        )
     }
 
     private fun buildNotif(text: String): Notification {
-        val tap = PendingIntent.getActivity(
-            this, 0, Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE)
-        val stop = PendingIntent.getService(
-            this, 1,
+        val tap = PendingIntent.getActivity(this, 0,
+            Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val stop = PendingIntent.getService(this, 1,
             Intent(this, WarpVpnService::class.java).apply { action = ACTION_DISCONNECT },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         return NotificationCompat.Builder(this, CH_ID)
-            .setContentTitle("U VPN")
-            .setContentText(text)
+            .setContentTitle("U VPN").setContentText(text)
             .setSmallIcon(R.drawable.ic_shield)
-            .setContentIntent(tap)
-            .addAction(0, "Disconnect", stop)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
+            .setContentIntent(tap).addAction(0, "Disconnect", stop)
+            .setOngoing(true).setPriority(NotificationCompat.PRIORITY_LOW).build()
     }
 
     override fun onDestroy() {
