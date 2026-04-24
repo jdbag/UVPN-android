@@ -26,6 +26,12 @@
             </intent-filter>
         </activity>
 
+        <!-- PrivacyPolicyActivity — MUST be here to prevent crash -->
+        <activity
+            android:name=".ui.PrivacyPolicyActivity"
+            android:exported="false"
+            android:label="Privacy Policy"/>
+
         <activity
             android:name="com.google.android.gms.ads.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
@@ -48,10 +54,5 @@
                 android:value="@string/vpn_desc"/>
         </service>
 
-
-        <activity
-            android:name=".ui.PrivacyPolicyActivity"
-            android:exported="false"
-            android:label="Privacy Policy"/>
     </application>
 </manifest>
