@@ -29,10 +29,9 @@ class WarpVpnService : VpnService() {
         const val ST_DISCONNECTED = "DISCONNECTED"
         const val ST_ERROR        = "ERROR"
         const val ST_NO_PERM      = "NO_PERMISSION"
-        private const val TAG       = "WarpVPN"
         private const val WARP_HOST = "162.159.192.1"
         private const val WARP_PORT = 2408
-        private const val MTU       = 1280
+        private const val MTU = 1280
     }
 
     private var tunFd: ParcelFileDescriptor? = null
@@ -57,7 +56,7 @@ class WarpVpnService : VpnService() {
         startForeground(NOTIF_ID, buildNotif("Connecting..."))
         val account = WarpConfig.accounts.getOrElse(accountIdx) { WarpConfig.accounts[0] }
         try {
-            // protect socket BEFORE building tunnel — prevents internet cut
+            // protect socket BEFORE tunnel — fixes internet cut
             val socket = DatagramSocket()
             protect(socket)
             socket.connect(InetSocketAddress(WARP_HOST, WARP_PORT))
@@ -82,7 +81,7 @@ class WarpVpnService : VpnService() {
                 .establish()
 
             if (tunFd == null) { broadcast(ST_NO_PERM); stopSelf(); return }
-            startForeground(NOTIF_ID, buildNotif("Connected • ${account.flag} ${account.region}"))
+            startForeground(NOTIF_ID, buildNotif("Connected - ${account.flag} ${account.region}"))
             broadcast(ST_CONNECTED)
             joinAll(scope.launch { runInbound() }, scope.launch { runOutbound() })
         } catch (e: SecurityException) { broadcast(ST_NO_PERM); stopSelf()
@@ -116,8 +115,7 @@ class WarpVpnService : VpnService() {
     private fun createChannel() {
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CH_ID, "VPN", NotificationManager.IMPORTANCE_LOW)
-                .apply { setShowBadge(false) }
-        )
+                .apply { setShowBadge(false) })
     }
 
     private fun buildNotif(text: String): Notification {
